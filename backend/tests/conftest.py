@@ -1,80 +1,48 @@
-from __future__ import annotations
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
-import os
-from pathlib import Path
+import app.models  # Ensures all ORM models (User, etc.) are registered
+from app.db.base import Base
+from app.db.session import get_db
+from app.main import app
 
-os.environ["GHOSTSOC_ENV"] = "test"
-os.environ["GHOSTSOC_DATABASE_URL"] = "sqlite:///./test-ghostsoc.db"
-os.environ["GHOSTSOC_SECRET_KEY"] = "test-secret-key-with-at-least-32-characters"  # noqa: S105
-os.environ["GHOSTSOC_BOOTSTRAP_ADMIN_PASSWORD"] = "test-administrator-password"  # noqa: S105
-os.environ["GHOSTSOC_DEMO_MODE"] = "true"
-os.environ["GHOSTSOC_DRY_RUN"] = "true"
-os.environ["GHOSTSOC_AUTHORIZED_TARGETS"] = "demo-endpoint-01,demo-endpoint-02"
-os.environ["GHOSTSOC_REPORT_DIR"] = "./test-reports"
-os.environ["GHOSTSOC_OPENSEARCH_URL"] = ""
-Path("test-ghostsoc.db").unlink(missing_ok=True)
+SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 
-import pytest  # noqa: E402
-from fastapi.testclient import TestClient  # noqa: E402
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL,
+    connect_args={"check_same_thread": False},
+)
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-from app.core.database import Base, engine  # noqa: E402
-from app.main import app  # noqa: E402
-
-
-@pytest.fixture(scope="session")
-def anyio_backend():
-    return "asyncio"
-
-
-@pytest.fixture(autouse=True)
-def clean_database():
-    Base.metadata.drop_all(bind=engine)
+@pytest.fixture(scope="function", autouse=True)
+def setup_db():
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
-    report_dir = Path("test-reports")
-    if report_dir.exists():
-        for path in report_dir.iterdir():
-            path.unlink()
-        report_dir.rmdir()
 
+@pytest.fixture(scope="function")
+def db_session(setup_db):
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = TestingSessionLocal(bind=connection)
+    
+    yield session
+    
+    session.close()
+    transaction.rollback()
+    connection.close()
 
-@pytest.fixture
-def client():
-    with TestClient(app) as test_client:
-        yield test_client
+@pytest.fixture(scope="function")
+def client(db_session):
+    def _override_get_db():
+        try:
+            yield db_session
+        finally:
+            pass
 
-
-@pytest.fixture
-def auth(client: TestClient) -> dict[str, str]:
-    response = client.post(
-        "/api/v1/auth/login",
-        json={"email": "admin@ghostsoc.local", "password": "test-administrator-password"},
-    )
-    assert response.status_code == 200, response.text
-    return {"Authorization": f"Bearer {response.json()['access_token']}"}
-
-
-@pytest.fixture
-def demo_event() -> dict[str, object]:
-    return {
-        "event_id": "test-sysmon-001",
-        "timestamp": "2026-08-17T09:30:00Z",
-        "source": "pytest-fixture",
-        "source_type": "sysmon",
-        "host": "demo-endpoint-01",
-        "user": "LAB\\analyst",
-        "process": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
-        "parent_process": "C:\\Windows\\explorer.exe",
-        "command_line": "powershell.exe -EncodedCommand ZABlAG0AbwA=",
-        "src_ip": "10.10.0.15",
-        "dst_ip": "198.51.100.42",
-        "domain": "controlled-demo.invalid",
-        "url": "https://controlled-demo.invalid/payload",
-        "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "file": "C:\\Lab\\controlled-demo.ps1",
-        "event_type": "process_creation",
-        "severity": "HIGH",
-        "raw_reference": "fixture:pytest",
-        "metadata": {"authorized_simulation": True},
-    }
+    app.dependency_overrides[get_db] = _override_get_db
+    with TestClient(app) as c:
+        yield c
+    app.dependency_overrides.clear()
