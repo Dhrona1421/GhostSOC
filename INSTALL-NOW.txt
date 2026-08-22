@@ -1,0 +1,4 @@
+GhostSOC Release Candidate 1
+
+Status: RC1 — Docker runtime certification still required.
+See docs/RELEASE_CHECKLIST.md and docs/RELEASE_STATUS.md.
