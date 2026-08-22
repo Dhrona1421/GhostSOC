@@ -3,8 +3,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-# Import Base and get_db from app.db (or app.database if applicable)
-from app.db import Base, get_db
+from app.core.database import Base, get_db
 import app.models  # Ensures all ORM models are registered
 from app.main import app
 
