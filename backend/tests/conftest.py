@@ -3,9 +3,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-import app.models  # Ensures all ORM models (User, etc.) are registered
-from app.db.base import Base
-from app.db.session import get_db
+from app.database import Base, get_db
+from app.models import User
 from app.main import app
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
