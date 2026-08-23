@@ -27,7 +27,7 @@ The installer generates local credentials when `.env` is absent, validates Docke
 Prerequisites: Docker Engine with Compose v2, at least 4 GB available RAM, and on Linux `vm.max_map_count=262144` for OpenSearch.
 
 ```bash
-git clone <repository-url> GhostSOC
+git clone https://github.com/Dhrona1421/GhostSOC
 cd GhostSOC
 cp .env.example .env
 # Change GHOSTSOC_SECRET_KEY, POSTGRES_PASSWORD, and the bootstrap password.
