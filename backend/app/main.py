@@ -11,6 +11,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.api.memory import router as memory_router
+from app.api.novabank import router as novabank_router
 from app.api.routes import router
 from app.api.visualizations import router as visualizations_router
 from app.api.web_security import router as web_security_router
@@ -132,6 +134,8 @@ async def unhandled_error(request: Request, exc: Exception) -> JSONResponse:
 
 
 app.include_router(router)
+app.include_router(memory_router)
+app.include_router(novabank_router)
 app.include_router(web_security_router)
 app.include_router(visualizations_router)
 

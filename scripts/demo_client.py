@@ -26,8 +26,8 @@ def request(path: str, method: str = "GET", body: dict | None = None, token: str
 
 def main() -> int:
     operation = sys.argv[1] if len(sys.argv) > 1 else "run"
-    if operation not in {"run", "reset", "web-run", "web-reset"}:
-        print("usage: demo_client.py [run|reset|web-run|web-reset]", file=sys.stderr)
+    if operation not in {"run", "reset", "web-run", "web-reset", "novabank"}:
+        print("usage: demo_client.py [run|reset|web-run|web-reset|novabank]", file=sys.stderr)
         return 2
     try:
         login = request("/auth/login", "POST", {"email": EMAIL, "password": PASSWORD})

@@ -4,6 +4,10 @@ GhostSOC is a unified security-operations dashboard and safe response orchestrat
 
 > **Truthful status:** the self-contained core and deterministic demo are implemented and covered by automated tests. External Wazuh, Velociraptor, Arkime, MISP, OpenCTI, Shuffle, and live CTI services require their own authorized deployment and credentials. They are never reported healthy without a successful check. Real containment is intentionally disabled; response defaults to verified dry-run simulation.
 
+## Security memory and investigation recommendations
+
+GhostSOC can retain structured incident experiences in [Hindsight](https://hindsight.vectorize.io/) and recall them when a future incident is opened. The existing incident detail now shows historical sources, ordered AI investigation recommendations and analyst feedback. AI recommendations are advisory only; response still goes through the existing policy, human approval and audit. Hindsight and an OpenAI-compatible inference provider are **optional external services**: without configured services the panels clearly say unavailable, and incident operations continue. No live Hindsight/model quality claim is made from the local HTTP-emulator tests. See [memory setup](docs/MEMORY_LAYER.md), [agent design](docs/AI_AGENT.md), and [synthetic NovaBank walkthrough](docs/DEMO.md). Run `make verify` for local checks; validate real-provider behavior separately.
+
 ## Easy install
 
 Download and extract the easy-install bundle, then run:
