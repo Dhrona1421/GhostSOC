@@ -13,7 +13,9 @@ from sqlalchemy.orm import Session
 from app.models import Alert, DetectionRule, SecurityEvent
 
 logger = logging.getLogger(__name__)
-RULE_DIR = Path(__file__).resolve().parents[2] / "rules"
+# Bundle the reviewed Sigma-compatible rules with the application so wheel,
+# Docker and source installs load exactly the same detection definitions.
+RULE_DIR = Path(__file__).resolve().parents[1] / "data" / "rules"
 REQUIRED_RULE_KEYS = {"title", "id", "description", "detection", "level"}
 FIELD_MAP = {
     "user": "username",

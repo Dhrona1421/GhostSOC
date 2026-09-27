@@ -114,6 +114,8 @@ def test_signature_detection_correlation_and_duplicate_request(client: TestClien
 
 def test_every_category_accepts_explicit_authorized_upstream_signal(client: TestClient, auth: dict[str, str]):
     now = datetime.now(UTC)
+    # Keep all generated events within one four-hour incident correlation bucket.
+    now = now.replace(hour=(now.hour // 4) * 4, minute=1, second=0, microsecond=0)
     observed: set[str] = set()
     incidents: set[str] = set()
     for index, definition in enumerate(WEB_ATTACK_CATALOG):
@@ -135,6 +137,8 @@ def test_every_category_accepts_explicit_authorized_upstream_signal(client: Test
 
 def test_behavioral_brute_force_and_password_spray_escalate(client: TestClient, auth: dict[str, str]):
     now = datetime.now(UTC)
+    # Seven requests must not straddle the 15-minute attack aggregation boundary.
+    now = now.replace(minute=(now.minute // 15) * 15 + 1, second=0, microsecond=0)
     latest = None
     for index in range(7):
         result = client.post(

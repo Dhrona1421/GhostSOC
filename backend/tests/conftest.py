@@ -1,47 +1,73 @@
+"""Isolated application database for API tests (including the startup lifespan)."""
+
+import json
+import sys
+from pathlib import Path
+
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
-import app.models  # Ensures all ORM models are registered
-from app.core.database import Base, get_db
-from app.main import app
+# CI runs the pytest console script after installing a non-editable wheel.
+# Prefer the checked-out app source and assets, not a copy in site-packages;
+# this also ensures --cov=app measures the same code the tests exercise.
+BACKEND_ROOT = str(Path(__file__).resolve().parents[1])
+if BACKEND_ROOT not in sys.path:
+    sys.path.insert(0, BACKEND_ROOT)
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+@pytest.fixture
+def db_session(tmp_path, monkeypatch):
+    # The standalone Compose contract job installs only pytest + PyYAML. Keep
+    # application imports inside the API fixtures so collection works there.
+    from sqlalchemy import create_engine
 
-@pytest.fixture(scope="function", autouse=True)
-def setup_db():
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
+    import app.models  # noqa: F401 - register models
+    from app.core.config import get_settings
+    from app.core.database import Base, SessionLocal
 
-@pytest.fixture(scope="function")
-def db_session(setup_db):
-    connection = engine.connect()
-    transaction = connection.begin()
-    session = TestingSessionLocal(bind=connection)
-    
-    yield session
-    
-    session.close()
-    transaction.rollback()
-    connection.close()
+    engine = create_engine(f"sqlite:///{tmp_path / 'test.db'}", connect_args={"check_same_thread": False})
+    Base.metadata.create_all(engine)
+    SessionLocal.configure(bind=engine)
 
-@pytest.fixture(scope="function")
+    settings = get_settings()
+    monkeypatch.setattr(settings, "report_dir", tmp_path / "reports")
+    monkeypatch.setattr(settings, "bootstrap_admin_password", "test-administrator-password")
+    try:
+        with SessionLocal() as session:
+            yield session
+    finally:
+        engine.dispose()
+
+
+@pytest.fixture
 def client(db_session):
-    def _override_get_db():
-        try:
-            yield db_session
-        finally:
-            pass
+    from fastapi.testclient import TestClient
 
-    app.dependency_overrides[get_db] = _override_get_db
-    with TestClient(app) as c:
-        yield c
-    app.dependency_overrides.clear()
+    from app.core.database import get_db
+    from app.main import app
+
+    def override():
+        db_session.expire_all()
+        yield db_session
+
+    app.dependency_overrides[get_db] = override
+    try:
+        with TestClient(app) as test_client:
+            yield test_client
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def auth(client):
+    response = client.post("/api/v1/auth/login", json={
+        "email": "admin@ghostsoc.local", "password": "test-administrator-password"
+    })
+    assert response.status_code == 200, response.text
+    return {"Authorization": f"Bearer {response.json()['access_token']}"}
+
+
+@pytest.fixture
+def demo_event():
+    data = json.loads((Path(__file__).resolve().parents[2] / "demo/powershell-event.json").read_text())
+    data["raw_reference"] = "fixture:pytest"
+    return data

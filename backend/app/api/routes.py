@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
+from importlib.resources import files
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
@@ -26,6 +26,8 @@ from app.models import (
     DetectionRule,
     Evidence,
     Incident,
+    InvestigationRecommendation,
+    MemoryExperience,
     Report,
     ResponseAction,
     ResponsePolicy,
@@ -643,6 +645,20 @@ def incident_detail(
     return incident
 
 
+@router.post("/incidents/{incident_id}/recommendation", tags=["incidents"])
+def investigation_recommendation(
+    incident_id: str,
+    db: DbSession,
+    _: Annotated[User, Depends(require_permission("RUN_INVESTIGATION"))],
+    without_memory: bool = False,
+) -> dict[str, object]:
+    incident = db.scalar(_incident_query().where(Incident.id == incident_id))
+    if incident is None:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    from app.services.agent import recommend
+    return recommend(db, incident, without_memory=without_memory)
+
+
 @router.patch("/incidents/{incident_id}", response_model=IncidentView, tags=["incidents"])
 def update_incident(
     incident_id: str,
@@ -679,6 +695,9 @@ def update_incident(
     )
     db.commit()
     db.refresh(incident)
+    if incident.status in {"RESOLVED", "CLOSED"}:
+        from app.services.hindsight import retain as retain_experience
+        retain_experience(db, incident, timeout_seconds=3)  # bounded best effort, after incident commit
     return incident
 
 
@@ -809,6 +828,8 @@ async def response_approval(
     if action is None:
         raise HTTPException(status_code=404, detail="Response action not found")
     action = decide_action(db, action, user, payload.decision, payload.reason)
+    from app.services.hindsight import retain as retain_experience
+    retain_experience(db, action.incident, timeout_seconds=3)  # bounded best effort after approval
     await live_broker.publish(
         "response",
         ResponseActionView.model_validate(action).model_dump(mode="json"),
@@ -1020,8 +1041,9 @@ def run_demo(
     settings = get_settings()
     if not settings.demo_mode:
         raise HTTPException(status_code=403, detail="Demo mode is disabled")
-    fixture_path = Path(__file__).resolve().parents[3] / "demo" / "powershell-event.json"
-    payload_data = json.loads(fixture_path.read_text(encoding="utf-8"))
+    # Packaged resource works in the installed wheel, local source and Docker image.
+    fixture = files("app").joinpath("data/powershell-event.json")
+    payload_data = json.loads(fixture.read_text(encoding="utf-8"))
     # Permit repetition without reset while preserving source-fixture identity in metadata.
     payload_data["event_id"] = f"demo-sysmon-{datetime.now(UTC).strftime('%Y%m%d%H%M%S%f')}"
     payload_data["timestamp"] = datetime.now(UTC).isoformat()
@@ -1139,6 +1161,8 @@ def reset_demo(
     # Explicit deletion order preserves users, policies, rules, connector health, and non-demo configuration.
     for model in (
         Report,
+        InvestigationRecommendation,
+        MemoryExperience,
         ResponseAction,
         Evidence,
         TimelineEvent,

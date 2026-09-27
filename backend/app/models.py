@@ -277,6 +277,27 @@ class Report(Base):
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
 
 
+class MemoryExperience(Base):
+    """Structured experience provenance; only Hindsight-confirmed documents are recallable."""
+
+    __tablename__ = "memory_experiences"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    incident_id: Mapped[str] = mapped_column(ForeignKey("incidents.id"), unique=True, index=True)
+    document_id: Mapped[str] = mapped_column(String(100), unique=True)
+    experience: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(String(20), default="PENDING")
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
+
+
+class InvestigationRecommendation(Base):
+    __tablename__ = "investigation_recommendations"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    incident_id: Mapped[str] = mapped_column(ForeignKey("incidents.id"), index=True)
+    content: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+
+
 class DetectionCoverage(Base):
     __tablename__ = "detection_coverage"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)

@@ -37,6 +37,16 @@ class Settings(BaseSettings):
     report_dir: Path = Path("./reports")
     evidence_dir: Path = Path("./evidence")
 
+    llm_base_url: str | None = None
+    llm_api_key: str | None = None
+    llm_model: str = "openai/gpt-oss-120b"
+    llm_timeout_seconds: float = Field(default=15.0, ge=1, le=60)
+
+    hindsight_url: str | None = None
+    hindsight_api_key: str | None = None
+    hindsight_bank_id: str = "ghostsoc-security"
+    hindsight_timeout_seconds: float = Field(default=60.0, ge=1, le=180)
+
     opensearch_url: str | None = None
     opensearch_username: str | None = None
     opensearch_password: str | None = None

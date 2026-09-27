@@ -3,6 +3,7 @@ import { api, login } from './api.js'
 import GlobalTopbar from './GlobalTopbar.jsx'
 import LiveSecurity from './LiveSecurity.jsx'
 import ResponseConsole from './ResponseConsole.jsx'
+import IncidentMemory from './IncidentMemory.jsx'
 import SOCAnalytics from './SecurityCharts.jsx'
 import { AttackGraphPanel, IncidentRelationshipGraph, NetworkMode } from './Visualizations.jsx'
 
@@ -72,7 +73,7 @@ function PageLoading({ label = 'Loading operational data…' }) {
   return <section className="loading-state" aria-live="polite" aria-busy="true"><header><span>LOADING</span><b>{label}</b></header><div className="loading-grid"><i /><i /><i /><i /></div><div className="loading-lines"><i /><i /><i /></div></section>
 }
 
-function Overview({ data, onDemo, demoBusy, token, onNavigate }) {
+function Overview({ data, onDemo, onNovaBank, demoBusy, token, onNavigate }) {
   if (!data) return <PageLoading label="Loading live backend metrics…" />
   const metrics = data.metrics
   return <>
@@ -87,7 +88,7 @@ function Overview({ data, onDemo, demoBusy, token, onNavigate }) {
     <SOCAnalytics token={token} />
     <AttackGraphPanel token={token} onNavigate={onNavigate} compact />
     <section className="split-grid">
-      <article className="panel wide"><div className="panel-head"><div><p className="eyebrow">LIVE FEED</p><h2>Recent security events</h2></div><button className="primary" onClick={onDemo} disabled={demoBusy}>{demoBusy ? 'Running safe demo…' : 'Run controlled demo'}</button></div>
+      <article className="panel wide"><div className="panel-head"><div><p className="eyebrow">LIVE FEED</p><h2>Recent security events</h2></div><div><button className="primary" onClick={onDemo} disabled={demoBusy}>{demoBusy ? 'Running safe demo…' : 'Run controlled demo'}</button> <button className="primary" onClick={onNovaBank} disabled={demoBusy}>Load NovaBank memory demo (synthetic · dry run)</button></div></div>
         {data.events.length ? <div className="table-wrap"><table><thead><tr><th>Time</th><th>Event</th><th>Host</th><th>Source</th><th>Severity</th></tr></thead><tbody>{data.events.map((event) => <tr key={event.id}><td>{new Date(event.timestamp).toLocaleTimeString()}</td><td><b>{event.event_type}</b><small>{event.process || event.domain || 'Normalized event'}</small></td><td>{event.host || '—'}</td><td>{event.source}</td><td><Badge>{event.severity}</Badge></td></tr>)}</tbody></table></div> : <Empty />}
       </article>
       <article className="panel"><div className="panel-head"><div><p className="eyebrow">CONTROLLED TESTS</p><h2>ATT&CK coverage</h2></div></div>
@@ -131,6 +132,7 @@ function IncidentDetail({ incident, token, reload, onNavigate }) {
     {tab === 'evidence' && <section className="investigation-grid"><article className="panel"><div className="section-heading"><div><p className="eyebrow">CHAIN OF CUSTODY</p><h3>Evidence records</h3></div><span>{incident.evidence.length}</span></div>{incident.evidence.length ? <div className="record-table">{incident.evidence.map((item) => <div key={item.id}><Badge>{item.status}</Badge><div><b>{item.summary}</b><small>{item.source}</small></div><code>{item.sha256 ? `${item.sha256.slice(0, 18)}…` : 'NO HASH'}</code></div>)}</div> : <Empty text="No evidence has been collected for this incident." />}</article><article className="panel"><div className="section-heading"><div><p className="eyebrow">INDICATORS</p><h3>IOCs and enrichment</h3></div><span>{incident.iocs.length}</span></div>{incident.iocs.length ? <div className="record-table ioc-records">{incident.iocs.map((ioc) => <div key={ioc.id}><Badge>{ioc.ioc_type}</Badge><div><code>{ioc.value}</code>{ioc.enrichment.map((result, index) => <small key={index}>{result.provider}: {result.summary} {result.mock && '· SIMULATED'}</small>)}</div><Badge>{ioc.verdict}</Badge></div>)}</div> : <Empty text="No indicators are associated with this incident." />}</article></section>}
     {tab === 'timeline' && <section className="panel timeline-panel"><div className="section-heading"><div><p className="eyebrow">CHRONOLOGY</p><h3>Incident timeline</h3></div><span>{incident.timeline.length} events</span></div><div className="investigation-timeline">{incident.timeline.map((event) => <div key={event.id}><time>{new Date(event.timestamp).toLocaleString()}</time><i /><div><b>{event.event_type.replaceAll('_', ' ')}</b><p>{event.summary}</p><small>{event.source}</small></div></div>)}</div></section>}
     {tab === 'response' && <section className="response-tab-layout"><ResponseConsole incident={incident} token={token} onRefresh={reload} Badge={Badge} /><aside className="incident-side"><section className="panel"><p className="eyebrow">REAL INCIDENT DATA</p><h3>Generate exports</h3><div className="export-list">{['pdf', 'json', 'csv', 'zip'].map((format) => <button key={format} onClick={() => exportReport(format)}><b>{format.toUpperCase()}</b><span>{format === 'zip' ? 'Evidence package' : `${format.toUpperCase()} incident export`}</span></button>)}</div></section><section className="panel"><div className="section-heading"><div><p className="eyebrow">ACCOUNTABILITY</p><h3>Related audit</h3></div><span>{auditRows.length}</span></div>{auditRows.length ? <div className="record-table compact-audit">{auditRows.map((row) => <div key={row.id}><time>{new Date(row.timestamp).toLocaleTimeString()}</time><div><b>{row.action}</b><small>{row.target_type} · {row.correlation_id?.slice(0, 12) || 'NO CORRELATION ID'}</small></div><Badge>{row.result}</Badge></div>)}</div> : <Empty text="No directly related audit records." />}</section></aside></section>}
+    <IncidentMemory incidentId={incident.id} token={token} />
   </div>
 }
 
@@ -245,6 +247,7 @@ export default function App() {
   useEffect(() => { load() }, [load])
   const doLogin = async (email, password) => { setBusy(true); setError(''); try { const result = await login(email, password); sessionStorage.setItem('ghostsoc-token', result.access_token); sessionStorage.setItem('ghostsoc-user', JSON.stringify(result.user)); setToken(result.access_token); setUser(result.user) } catch (err) { setError(err.message) } finally { setBusy(false) } }
   const runDemo = async () => { setDemoBusy(true); setError(''); try { const result = await api('/demo/run', { token, method: 'POST' }); setError(`Safe demo completed: incident ${result.incident_id.slice(0, 8)}. No external action executed.`); await load() } catch (err) { setError(err.message) } finally { setDemoBusy(false) } }
+  const runNovaBank = async () => { setDemoBusy(true); setError(''); try { const result = await api('/demo/novabank', { token, method: 'POST' }); setError(`Synthetic NovaBank cases loaded · memory ${result.memory_status}. No real response executed.`); navigate('Incidents', result.incident_ids[0]) } catch (err) { setError(err.message) } finally { setDemoBusy(false) } }
   const logout = async () => { try { await api('/auth/logout', { token, method: 'POST' }) } finally { sessionStorage.clear(); setToken(null); setUser(null) } }
   const navigate = useCallback((nextPage, targetId = null) => {
     loadSequence.current += 1
@@ -255,7 +258,7 @@ export default function App() {
   if (!authReady) return <main className="login-shell"><PageLoading label="Opening GhostSOC workspace…" /></main>
   if (!user) return <Login onLogin={doLogin} busy={busy} error={error} />
   let content
-  if (page === 'Overview') content = <Overview data={data} onDemo={runDemo} demoBusy={demoBusy} token={token} onNavigate={navigate} />
+  if (page === 'Overview') content = <Overview data={data} onDemo={runDemo} onNovaBank={runNovaBank} demoBusy={demoBusy} token={token} onNavigate={navigate} />
   else if (page === 'Network') content = <NetworkMode token={token} onNavigate={navigate} />
   else if (['Live Monitor', 'Attacks', 'Web Security'].includes(page)) content = <LiveSecurity page={page} token={token} Badge={Badge} focusId={page === 'Attacks' ? navigationTarget : null} onNavigate={navigate} />
   else if (page === 'Alerts') content = <Alerts rows={data} />

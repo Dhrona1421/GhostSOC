@@ -2,7 +2,7 @@
 set -eu
 
 printf '%s\n' '== Backend lint and tests =='
-(cd backend && python -m ruff check app tests && python -m pytest)
+(cd backend && python -m ruff check app tests alembic/versions && python -m pytest --cov=app --cov-report=term-missing --cov-fail-under=85)
 printf '%s\n' '== Migration check =='
 (cd backend && GHOSTSOC_ENV=test GHOSTSOC_DATABASE_URL="sqlite:///./migration-check.db" alembic upgrade head && GHOSTSOC_ENV=test GHOSTSOC_DATABASE_URL="sqlite:///./migration-check.db" alembic check && GHOSTSOC_ENV=test GHOSTSOC_DATABASE_URL="sqlite:///./migration-check.db" alembic downgrade base && rm -f migration-check.db)
 printf '%s\n' '== Frontend dependency audit, lint and build =='

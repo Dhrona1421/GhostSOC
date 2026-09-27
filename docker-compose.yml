@@ -65,6 +65,14 @@ services:
       GHOSTSOC_REPORT_DIR: /var/lib/ghostsoc/reports
       GHOSTSOC_EVIDENCE_DIR: /var/lib/ghostsoc/evidence
       GHOSTSOC_OPENSEARCH_URL: http://opensearch:9200
+      GHOSTSOC_LLM_BASE_URL: ${GHOSTSOC_LLM_BASE_URL:-}
+      GHOSTSOC_LLM_API_KEY: ${GHOSTSOC_LLM_API_KEY:-}
+      GHOSTSOC_LLM_MODEL: ${GHOSTSOC_LLM_MODEL:-openai/gpt-oss-120b}
+      GHOSTSOC_LLM_TIMEOUT_SECONDS: ${GHOSTSOC_LLM_TIMEOUT_SECONDS:-15}
+      GHOSTSOC_HINDSIGHT_URL: ${GHOSTSOC_HINDSIGHT_URL:-}
+      GHOSTSOC_HINDSIGHT_API_KEY: ${GHOSTSOC_HINDSIGHT_API_KEY:-}
+      GHOSTSOC_HINDSIGHT_BANK_ID: ${GHOSTSOC_HINDSIGHT_BANK_ID:-ghostsoc-security}
+      GHOSTSOC_HINDSIGHT_TIMEOUT_SECONDS: ${GHOSTSOC_HINDSIGHT_TIMEOUT_SECONDS:-60}
       GHOSTSOC_ALLOW_PRIVATE_CONNECTORS: ${GHOSTSOC_ALLOW_PRIVATE_CONNECTORS:-false}
       GHOSTSOC_WAZUH_URL: ${GHOSTSOC_WAZUH_URL:-}
       GHOSTSOC_WAZUH_TOKEN: ${GHOSTSOC_WAZUH_TOKEN:-}
@@ -115,6 +123,19 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  hindsight:
+    image: ghcr.io/vectorize-io/hindsight:latest
+    profiles: ["memory"]
+    restart: unless-stopped
+    shm_size: 1gb
+    environment:
+      HINDSIGHT_API_LLM_API_KEY: ${HINDSIGHT_API_LLM_API_KEY:-}
+      HINDSIGHT_API_WORKER_ID: ghostsoc-memory-worker
+    volumes:
+      - hindsight-data:/home/hindsight/.pg0
+    security_opt:
+      - no-new-privileges:true
+
   demo-runner:
     image: python:3.13-alpine
     profiles: ["demo", "full"]
@@ -154,3 +175,4 @@ volumes:
   opensearch-data:
   report-data:
   evidence-data:
+  hindsight-data:

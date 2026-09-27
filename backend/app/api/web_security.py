@@ -22,6 +22,8 @@ from app.models import (
     DetectionCoverage,
     Evidence,
     Incident,
+    InvestigationRecommendation,
+    MemoryExperience,
     Report,
     ResponseAction,
     SecurityEvent,
@@ -741,6 +743,8 @@ async def reset_web_demo(
     )
     for model, condition in (
         (Report, Report.incident_id.in_(incident_ids)),
+        (InvestigationRecommendation, InvestigationRecommendation.incident_id.in_(incident_ids)),
+        (MemoryExperience, MemoryExperience.incident_id.in_(incident_ids)),
         (ResponseAction, ResponseAction.incident_id.in_(incident_ids)),
         (Evidence, Evidence.incident_id.in_(incident_ids)),
         (TimelineEvent, TimelineEvent.incident_id.in_(incident_ids)),

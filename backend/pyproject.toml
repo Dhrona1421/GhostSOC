@@ -10,9 +10,9 @@ requires-python = ">=3.11,<3.14"
 dependencies = [
   "alembic==1.16.5",
   "argon2-cffi==25.1.0",
-  "fastapi==0.116.1",
+  "fastapi==0.141.1",
   "httpx==0.28.1",
-  "PyJWT==2.10.1",
+  "PyJWT==2.15.0",
   "pydantic-settings==2.10.1",
   "psycopg[binary]==3.2.9",
   "PyYAML==6.0.2",
@@ -23,13 +23,16 @@ dependencies = [
 
 [project.optional-dependencies]
 test = [
-  "pytest==8.4.1",
+  "pytest==9.1.1",
   "pytest-cov==6.2.1",
   "ruff==0.12.10",
 ]
 
 [tool.setuptools.packages.find]
 include = ["app*"]
+
+[tool.setuptools.package-data]
+app = ["data/*.json", "data/rules/*.yml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

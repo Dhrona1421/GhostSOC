@@ -4,6 +4,10 @@ GhostSOC is a unified security-operations dashboard and safe response orchestrat
 
 > **Truthful status:** the self-contained core and deterministic demo are implemented and covered by automated tests. External Wazuh, Velociraptor, Arkime, MISP, OpenCTI, Shuffle, and live CTI services require their own authorized deployment and credentials. They are never reported healthy without a successful check. Real containment is intentionally disabled; response defaults to verified dry-run simulation.
 
+## Security memory and investigation recommendations
+
+GhostSOC can retain structured incident experiences in [Hindsight](https://hindsight.vectorize.io/) and recall them when a future incident is opened. The existing incident detail now shows historical sources, ordered AI investigation recommendations and analyst feedback. AI recommendations are advisory only; response still goes through the existing policy, human approval and audit. Hindsight and an OpenAI-compatible inference provider are **optional external services**: without configured services the panels clearly say unavailable, and incident operations continue. No live Hindsight/model quality claim is made from the local HTTP-emulator tests. See [memory setup](docs/MEMORY_LAYER.md), [agent design](docs/AI_AGENT.md), and [synthetic NovaBank walkthrough](docs/DEMO.md). Run `make verify` for local checks; validate real-provider behavior separately.
+
 ## Easy install
 
 Download and extract the easy-install bundle, then run:
@@ -76,7 +80,7 @@ Frontend development server: <http://localhost:5173>
 make verify
 ```
 
-This runs Ruff, the backend test suite, Alembic upgrade/downgrade, frontend ESLint/build, and a tracked-file secret-pattern scan. Docker build/start/health must additionally be run on a host with Docker; Docker was not available in the implementation workspace and is therefore not falsely marked verified.
+This runs Ruff (including migrations), the backend test suite with an 85% coverage floor, Alembic upgrade/downgrade, frontend dependency audit/ESLint/build, and a tracked-file secret-pattern scan. CI also audits the pinned Python lockfile. The endpoint demo fixture and Sigma rule files are copied into `backend/app/data/` for wheel and Docker installs; keep these copies identical to `demo/powershell-event.json` and `backend/rules/*.yml` (the tests enforce this). Docker build/start/health must additionally be run on a host with Docker; Docker was not available in the implementation workspace and is therefore not falsely marked verified.
 
 ## Deployment modes
 
