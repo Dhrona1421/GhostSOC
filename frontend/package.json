@@ -14,7 +14,7 @@
     "react-dom": "18.3.1"
   },
   "devDependencies": {
-    "@eslint/js": "9.33.0",
+    "@eslint/js": "10.0.1",
     "@vitejs/plugin-react": "6.0.5",
     "eslint": "9.33.0",
     "eslint-plugin-react-hooks": "5.2.0",
