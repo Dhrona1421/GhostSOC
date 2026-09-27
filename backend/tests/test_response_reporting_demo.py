@@ -1,9 +1,18 @@
 from __future__ import annotations
 
 import io
+import json
 import zipfile
+from importlib.resources import files
+from pathlib import Path
 
 from fastapi.testclient import TestClient
+
+
+def test_packaged_demo_fixture_matches_original():
+    source = Path(__file__).resolve().parents[2] / "demo" / "powershell-event.json"
+    packaged = files("app").joinpath("data/powershell-event.json")
+    assert json.loads(packaged.read_text(encoding="utf-8")) == json.loads(source.read_text(encoding="utf-8"))
 
 
 def _incident(client: TestClient, auth: dict[str, str], event: dict[str, object]) -> str:

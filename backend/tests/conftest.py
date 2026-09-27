@@ -1,9 +1,17 @@
 """Isolated application database for API tests (including the startup lifespan)."""
 
 import json
+import sys
 from pathlib import Path
 
 import pytest
+
+# CI runs the pytest console script after installing a non-editable wheel.
+# Prefer the checked-out app source and assets, not a copy in site-packages;
+# this also ensures --cov=app measures the same code the tests exercise.
+BACKEND_ROOT = str(Path(__file__).resolve().parents[1])
+if BACKEND_ROOT not in sys.path:
+    sys.path.insert(0, BACKEND_ROOT)
 
 
 @pytest.fixture

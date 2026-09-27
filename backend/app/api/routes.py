@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
+from importlib.resources import files
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
@@ -1041,8 +1041,9 @@ def run_demo(
     settings = get_settings()
     if not settings.demo_mode:
         raise HTTPException(status_code=403, detail="Demo mode is disabled")
-    fixture_path = Path(__file__).resolve().parents[3] / "demo" / "powershell-event.json"
-    payload_data = json.loads(fixture_path.read_text(encoding="utf-8"))
+    # Packaged resource works in the installed wheel, local source and Docker image.
+    fixture = files("app").joinpath("data/powershell-event.json")
+    payload_data = json.loads(fixture.read_text(encoding="utf-8"))
     # Permit repetition without reset while preserving source-fixture identity in metadata.
     payload_data["event_id"] = f"demo-sysmon-{datetime.now(UTC).strftime('%Y%m%d%H%M%S%f')}"
     payload_data["timestamp"] = datetime.now(UTC).isoformat()

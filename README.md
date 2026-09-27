@@ -80,7 +80,7 @@ Frontend development server: <http://localhost:5173>
 make verify
 ```
 
-This runs Ruff, the backend test suite, Alembic upgrade/downgrade, frontend ESLint/build, and a tracked-file secret-pattern scan. Docker build/start/health must additionally be run on a host with Docker; Docker was not available in the implementation workspace and is therefore not falsely marked verified.
+This runs Ruff (including migrations), the backend test suite with an 85% coverage floor, Alembic upgrade/downgrade, frontend dependency audit/ESLint/build, and a tracked-file secret-pattern scan. CI also audits the pinned Python lockfile. The endpoint demo fixture and Sigma rule files are copied into `backend/app/data/` for wheel and Docker installs; keep these copies identical to `demo/powershell-event.json` and `backend/rules/*.yml` (the tests enforce this). Docker build/start/health must additionally be run on a host with Docker; Docker was not available in the implementation workspace and is therefore not falsely marked verified.
 
 ## Deployment modes
 

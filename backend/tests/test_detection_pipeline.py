@@ -1,8 +1,17 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
-from app.services.detection import RuleValidationError, load_rule_files, validate_rule
+from app.services.detection import RULE_DIR, RuleValidationError, load_rule_files, validate_rule
+
+
+def test_packaged_rules_match_reviewed_source():
+    source = Path(__file__).resolve().parents[1] / "rules"
+    originals = {item.name: item.read_bytes() for item in source.glob("*.yml")}
+    packaged = {item.name: item.read_bytes() for item in RULE_DIR.glob("*.yml")}
+    assert len(originals) >= 3 and packaged == originals
 
 
 def test_rule_files_validate_and_unsafe_condition_rejected():
